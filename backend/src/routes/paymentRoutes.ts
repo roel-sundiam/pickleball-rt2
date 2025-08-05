@@ -8,7 +8,8 @@ import {
   getUnpaidReservations,
   getReservationPaymentDetails,
   getReservationPaymentStatus,
-  checkUnsettledPayments
+  checkUnsettledPayments,
+  getCourtReceiptsReport
 } from '../controllers/paymentController';
 import { authenticate, requireApproval, requireSuperAdmin } from '../middleware/auth';
 
@@ -29,7 +30,9 @@ router.get('/status/:date', authenticate, requireApproval, checkPaymentStatus);
 router.get('/unsettled', authenticate, requireApproval, checkUnsettledPayments);
 
 // Admin routes - require super admin role
-router.put('/:id/status', authenticate, requireSuperAdmin, updatePaymentStatus);
+// Note: Specific routes must come before parameterized routes
+router.get('/reports/court-receipts', authenticate, requireSuperAdmin, getCourtReceiptsReport);
 router.get('/all', authenticate, requireSuperAdmin, getAllPayments);
+router.put('/:id/status', authenticate, requireSuperAdmin, updatePaymentStatus);
 
 export default router;

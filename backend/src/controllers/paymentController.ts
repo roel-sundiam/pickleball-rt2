@@ -616,3 +616,183 @@ export const checkUnsettledPayments = async (req: AuthenticatedRequest, res: Res
     } as ApiResponse);
   }
 };
+
+// Get court receipts report (admin only)
+export const getCourtReceiptsReport = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    // Check if user is admin
+    if (req.user?.role !== 'superadmin') {
+      res.status(403).json({
+        success: false,
+        message: 'Admin access required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    const { 
+      status, 
+      homeownerStatus, 
+      startDate, 
+      endDate, 
+      search,
+      page = 1, 
+      limit = 50 
+    } = req.query;
+
+    // Build filter object
+    const filter: any = {};
+    
+    if (status && typeof status === 'string') {
+      filter.status = status;
+    }
+    
+    if (homeownerStatus && typeof homeownerStatus === 'string') {
+      filter.homeownerStatus = homeownerStatus;
+    }
+
+    // Date range filtering
+    if (startDate || endDate) {
+      filter.reservationDate = {};
+      if (startDate) {
+        filter.reservationDate.$gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const endDateObj = new Date(endDate as string);
+        endDateObj.setHours(23, 59, 59, 999); // Include full end date
+        filter.reservationDate.$lte = endDateObj;
+      }
+    }
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get payments with user and reservation details
+    const paymentsQuery = PaymentLog.find(filter)
+      .populate('userId', 'fullName username email homeownerStatus')
+      .populate('reservationId', 'date startTime endTime duration')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    // If search is provided, we need to handle it differently since we can't search populated fields directly
+    let payments;
+    if (search && typeof search === 'string') {
+      // First get all payments matching other filters
+      const allPayments = await PaymentLog.find(filter)
+        .populate('userId', 'fullName username email homeownerStatus')
+        .populate('reservationId', 'date startTime endTime duration')
+        .sort({ createdAt: -1 });
+
+      // Filter by search term on populated data
+      const searchTerm = search.toLowerCase();
+      const filteredPayments = allPayments.filter(payment => {
+        const user = payment.userId as any;
+        return (
+          user?.fullName?.toLowerCase().includes(searchTerm) ||
+          user?.username?.toLowerCase().includes(searchTerm) ||
+          user?.email?.toLowerCase().includes(searchTerm)
+        );
+      });
+
+      // Apply pagination to filtered results
+      payments = filteredPayments.slice(skip, skip + limitNum);
+    } else {
+      payments = await paymentsQuery;
+    }
+
+    // Get total count for pagination
+    const total = search && typeof search === 'string' 
+      ? (await PaymentLog.find(filter)
+          .populate('userId', 'fullName username email homeownerStatus')
+          .then(allPayments => {
+            const searchTerm = search.toLowerCase();
+            return allPayments.filter(payment => {
+              const user = payment.userId as any;
+              return (
+                user?.fullName?.toLowerCase().includes(searchTerm) ||
+                user?.username?.toLowerCase().includes(searchTerm) ||
+                user?.email?.toLowerCase().includes(searchTerm)
+              );
+            }).length;
+          }))
+      : await PaymentLog.countDocuments(filter);
+
+    // Calculate summary statistics
+    const summaryStats = await PaymentLog.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    // Calculate overall totals
+    const overallStats = await PaymentLog.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalPayments: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          homeownerPayments: {
+            $sum: { $cond: [{ $eq: ['$homeownerStatus', 'homeowner'] }, 1, 0] }
+          },
+          nonHomeownerPayments: {
+            $sum: { $cond: [{ $eq: ['$homeownerStatus', 'non-homeowner'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const summary = {
+      totalPayments: overallStats[0]?.totalPayments || 0,
+      totalAmount: overallStats[0]?.totalAmount || 0,
+      homeownerPayments: overallStats[0]?.homeownerPayments || 0,
+      nonHomeownerPayments: overallStats[0]?.nonHomeownerPayments || 0,
+      statusBreakdown: summaryStats.reduce((acc, stat) => {
+        acc[stat._id] = {
+          count: stat.count,
+          totalAmount: stat.totalAmount
+        };
+        return acc;
+      }, {} as Record<string, { count: number; totalAmount: number }>)
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Court receipts report retrieved successfully',
+      data: {
+        payments,
+        summary,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        },
+        filters: {
+          status,
+          homeownerStatus,
+          startDate,
+          endDate,
+          search
+        }
+      },
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Get court receipts report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve court receipts report',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+  }
+};
