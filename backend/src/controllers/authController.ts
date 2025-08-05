@@ -89,11 +89,37 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const credentials: LoginCredentials = req.body;
+    
+    // Debug logging for production troubleshooting
+    console.log('🔍 Login attempt:', {
+      username: credentials.username,
+      hasPassword: !!credentials.password,
+      passwordLength: credentials.password?.length || 0,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Environment debug
+    console.log('🔍 Environment check:', {
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      jwtSecretLength: process.env.JWT_SECRET?.length || 0,
+      nodeEnv: process.env.NODE_ENV,
+      mongoUri: process.env.MONGODB_URI ? 'exists' : 'missing'
+    });
 
     // Find user by username and include password for comparison
     const user = await User.findOne({ 
       username: credentials.username.toLowerCase() 
     }).select('+password');
+    
+    console.log('🔍 User lookup result:', {
+      userFound: !!user,
+      userId: user?._id,
+      username: user?.username,
+      role: user?.role,
+      isActive: user?.isActive,
+      isApproved: user?.isApproved,
+      hasPassword: !!user?.password
+    });
 
     if (!user) {
       res.status(401).json({
@@ -105,8 +131,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check password
+    console.log('🔍 Password comparison starting...');
     const isPasswordValid = await user.comparePassword(credentials.password);
+    console.log('🔍 Password comparison result:', {
+      isValid: isPasswordValid,
+      providedPasswordLength: credentials.password?.length,
+      storedPasswordLength: user.password?.length
+    });
+    
     if (!isPasswordValid) {
+      console.log('❌ Password validation failed');
       res.status(401).json({
         success: false,
         message: 'Invalid username or password',
