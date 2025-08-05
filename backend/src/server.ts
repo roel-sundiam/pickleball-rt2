@@ -36,8 +36,26 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+// CORS configuration to support multiple origins
+const allowedOrigins = [
+  'http://localhost:4200',
+  'https://pickleball-rt2.netlify.app',
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove any undefined values
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    console.log('🚫 CORS blocked origin:', origin);
+    console.log('✅ Allowed origins:', allowedOrigins);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
@@ -59,8 +77,13 @@ app.use(express.urlencoded({ extended: true }));
 const uploadsPath = path.join(__dirname, '../uploads');
 console.log('Static uploads path:', uploadsPath);
 app.use('/uploads', (req, res, next) => {
-  // Set CORS headers for static files
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:4200');
+  // Set CORS headers for static files - support multiple origins
+  const origin = req.get('Origin');
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:4200'); // fallback
+  }
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
