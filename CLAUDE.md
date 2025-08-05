@@ -70,6 +70,50 @@ FRONTEND_URL=http://localhost:4200
 2. **Start Frontend**: `cd frontend/pickleball-app && ng serve` (runs on port 4200)
 3. **Test API Health**: `curl http://localhost:3000/api/health`
 
+### Git Workflow
+
+**Frontend Changes (Angular PWA):**
+```bash
+# Navigate to frontend directory
+cd frontend/pickleball-app
+
+# Stage and commit frontend changes
+git add .
+git commit -m "✨ Your commit message with emoji and description"
+
+# Push to origin (done by user)
+git push origin main
+```
+
+**Backend Changes (Node.js/Express):**
+```bash
+# Navigate to backend directory  
+cd backend
+
+# Stage and commit backend changes
+git add .
+git commit -m "🔧 Your commit message with emoji and description"
+
+# Push to origin (done by user)
+git push origin main
+```
+
+**Combined Changes:**
+```bash
+# From project root - commit both frontend and backend
+git add .
+git commit -m "🚀 Combined frontend and backend updates"
+
+# Push to origin (done by user) 
+git push origin main
+```
+
+**Deployment Note:**
+- Initial push and render deployment completed
+- Claude handles `git add` and `git commit` for changes
+- User handles `git push` to trigger deployment
+- Frontend and backend can be committed separately or together
+
 ### Code Organization
 
 **Backend follows MVC pattern:**
