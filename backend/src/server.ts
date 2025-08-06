@@ -6,7 +6,9 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import { createServer } from 'http';
 import connectDB from './config/database';
+import { websocketService } from './services/websocketService';
 
 dotenv.config();
 
@@ -181,6 +183,13 @@ app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-});// trigger restart
+// Create HTTP server
+const server = createServer(app);
+
+// Initialize WebSocket service
+websocketService.initialize(server);
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  console.log(`🔌 WebSocket server ready for connections`);
+});

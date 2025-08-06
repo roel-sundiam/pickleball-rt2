@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Types } from 'mongoose';
 import { Poll } from '../models';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { websocketService } from '../services/websocketService';
 import { 
   Poll as PollInterface,
   PollVote,
@@ -85,6 +86,19 @@ export const createPoll = async (req: AuthenticatedRequest, res: Response): Prom
 
     // Populate creator information for response
     await poll.populate('createdBy', 'username fullName');
+
+    // Send real-time notification to all approved users
+    websocketService.sendToApprovedUsers({
+      type: 'poll_created',
+      title: '📊 New Poll Created',
+      message: `"${title}" - Cast your vote now!`,
+      data: {
+        pollId: poll._id,
+        pollTitle: title,
+        createdBy: poll.createdBy
+      },
+      timestamp: new Date()
+    });
 
     const response: ApiResponse<any> = {
       success: true,
@@ -263,6 +277,24 @@ export const voteOnPoll = async (req: AuthenticatedRequest, res: Response): Prom
 
     // Populate for response
     await poll.populate('createdBy', 'username fullName');
+
+    // Send notification to poll creator and admins
+    const voterName = (req.user as any)?.fullName || req.user?.username || 'Someone';
+    const selectedOption = poll.options[optionIndex].text;
+    
+    websocketService.sendToRole('superadmin', {
+      type: 'poll_voted',
+      title: '🗳️ New Vote Cast',
+      message: `${voterName} voted for "${selectedOption}" in "${poll.title}"`,
+      data: {
+        pollId: poll._id,
+        pollTitle: poll.title,
+        voterName,
+        selectedOption,
+        totalVotes: poll.votedUsers.length
+      },
+      timestamp: new Date()
+    });
 
     const response: ApiResponse<any> = {
       success: true,

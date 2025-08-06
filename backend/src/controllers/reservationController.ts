@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { CourtReservation, Payment, CoinTransaction, User } from '../models';
 import PaymentLog from '../models/PaymentLog';
+import { websocketService } from '../services/websocketService';
 import { 
   ReservationRequest, 
   ApiResponse, 
@@ -363,6 +364,26 @@ export const createReservation = async (req: AuthenticatedRequest, res: Response
 
     await reservation.save();
 
+    // Send real-time notification to all approved users
+    const userName = user.fullName || user.username || 'Someone';
+    const timeDescription = endTime ? 
+      `${startTime} to ${endTime}` : 
+      `at ${startTime}`;
+    
+    websocketService.sendToApprovedUsers({
+      type: 'reservation_created',
+      title: '🏓 New Court Reservation',
+      message: `${userName} booked the court for ${reservationData.date} ${timeDescription}`,
+      data: {
+        reservationId: reservation._id,
+        userName,
+        date: reservationData.date,
+        timeDescription,
+        players: reservationData.players
+      },
+      timestamp: new Date()
+    });
+
     // Deduct coins from user balance (superadmins don't lose coins)
     if (user.role !== 'superadmin') {
       user.coinBalance -= totalCost;
@@ -370,10 +391,6 @@ export const createReservation = async (req: AuthenticatedRequest, res: Response
     }
 
     // Create coin transaction record
-    const timeDescription = endTime ? 
-      `${startTime} to ${endTime}` : 
-      `at ${startTime}`;
-    
     const coinTransaction = new CoinTransaction({
       userId,
       type: 'spent',
