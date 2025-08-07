@@ -8,6 +8,9 @@
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "create-superadmin": "ts-node src/scripts/createSuperAdmin.ts",
+    "delete-page-visits": "ts-node src/scripts/deleteAllPageVisits.ts",
+    "delete-page-visits-dry-run": "ts-node src/scripts/deleteAllPageVisits.ts --dry-run",
+    "delete-page-visits-restore": "ts-node src/scripts/deleteAllPageVisits.ts --restore-coins",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
