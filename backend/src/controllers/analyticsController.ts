@@ -171,7 +171,7 @@ export const getPageVisitAnalytics = async (
       return;
     }
 
-    // Basic analytics query - show all visits for superadmin
+    // Basic analytics query - exclude superadmin users from all statistics
     const matchQuery: any = {};
     
     if (startDate && endDate) {
@@ -181,47 +181,91 @@ export const getPageVisitAnalytics = async (
       };
     }
 
-    const pageVisits = await PageVisit.find(matchQuery)
-      .populate('userId', 'fullName username')
-      .sort({ timestamp: -1 })
-      .limit(parseInt(limit as string));
+    // Use aggregation to exclude superadmin users from page visits
+    const pageVisitsAgg = await PageVisit.aggregate([
+      { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
+      { $sort: { timestamp: -1 } },
+      { $limit: parseInt(limit as string) },
+      {
+        $project: {
+          _id: 1,
+          pageName: 1,
+          url: 1,
+          coinsConsumed: 1,
+          timestamp: 1,
+          userId: {
+            _id: '$user._id',
+            username: '$user.username',
+            fullName: '$user.fullName'
+          }
+        }
+      }
+    ]);
 
-    // Get summary statistics
-    const totalVisits = await PageVisit.countDocuments(matchQuery);
+    const pageVisits = pageVisitsAgg;
+
+    // Get summary statistics - exclude superadmin users
+    const totalVisitsAgg = await PageVisit.aggregate([
+      { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
+      { $count: 'totalVisits' }
+    ]);
+    const totalVisits = totalVisitsAgg.length > 0 ? totalVisitsAgg[0].totalVisits : 0;
+
     const totalCoinsSpent = await PageVisit.aggregate([
       { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
       { $group: { _id: null, total: { $sum: '$coinsConsumed' } } }
     ]);
 
-    // Get top pages
+    // Get top pages - exclude superadmin visits
     const topPages = await PageVisit.aggregate([
       { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
       { $group: { _id: '$pageName', visits: { $sum: 1 } } },
       { $sort: { visits: -1 } },
       { $limit: 10 }
     ]);
 
-    // Get top users (superadmin can see this)
+    // Get top users - exclude superadmin users
     const topUsers = await PageVisit.aggregate([
       { $match: matchQuery },
-      { $group: { _id: '$userId', visits: { $sum: 1 }, totalCoins: { $sum: '$coinsConsumed' } } },
-      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
-      { $project: { visits: 1, totalCoins: 1, username: '$user.username', fullName: '$user.fullName' } },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
+      { $group: { _id: '$userId', visits: { $sum: 1 }, totalCoins: { $sum: '$coinsConsumed' } } },
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userDetails' } },
+      { $unwind: '$userDetails' },
+      { $project: { visits: 1, totalCoins: 1, username: '$userDetails.username', fullName: '$userDetails.fullName' } },
       { $sort: { visits: -1 } },
       { $limit: 10 }
     ]);
 
-    // Get unique pages count
+    // Get unique pages count - exclude superadmin visits
     const uniquePages = await PageVisit.aggregate([
       { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
       { $group: { _id: '$pageName' } },
       { $count: 'totalUniquePages' }
     ]);
 
-    // Get unique visitors/users count
+    // Get unique visitors/users count - exclude superadmin users
     const uniqueVisitors = await PageVisit.aggregate([
       { $match: matchQuery },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $ne: 'superadmin' } } },
       { $group: { _id: '$userId' } },
       { $count: 'totalUniqueVisitors' }
     ]);
