@@ -25,4 +25,7 @@ router.post('/purchase-request', authenticate, coinController.submitPurchaseRequ
 // Get user's pending coin requests
 router.get('/my-pending-requests', authenticate, coinController.getUserPendingRequests);
 
+// Get coin balance statistics (superadmin only)
+router.get('/balance-statistics', authenticate, coinController.getCoinBalanceStatistics);
+
 export default router;

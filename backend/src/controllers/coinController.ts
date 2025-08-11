@@ -150,3 +150,81 @@ export const submitPurchaseRequest = async (req: AuthenticatedRequest, res: Resp
     res.status(500).json({ error: 'Failed to submit purchase request' });
   }
 };
+
+export const getCoinBalanceStatistics = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Check if user is superadmin
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin role required.' });
+    }
+
+    // Get all users with their coin balances
+    const users = await User.find({}, {
+      _id: 1,
+      username: 1,
+      fullName: 1,
+      email: 1,
+      coinBalance: 1,
+      homeownerStatus: 1,
+      isApproved: 1
+    }).sort({ coinBalance: -1 });
+
+    // Calculate statistics
+    const totalUsers = users.length;
+    const totalCoinsInSystem = users.reduce((sum, user) => sum + (user.coinBalance || 0), 0);
+    const averageCoinsPerUser = totalUsers > 0 ? Math.round(totalCoinsInSystem / totalUsers * 100) / 100 : 0;
+    const usersWithCoins = users.filter(user => (user.coinBalance || 0) > 0).length;
+    const usersWithoutCoins = totalUsers - usersWithCoins;
+
+    // Get top 10 users by coin balance
+    const topUsers = users.slice(0, 10);
+
+    // Distribution statistics
+    const coinDistribution = {
+      'No coins (0)': users.filter(user => (user.coinBalance || 0) === 0).length,
+      'Low (1-50)': users.filter(user => (user.coinBalance || 0) > 0 && (user.coinBalance || 0) <= 50).length,
+      'Medium (51-200)': users.filter(user => (user.coinBalance || 0) > 50 && (user.coinBalance || 0) <= 200).length,
+      'High (201-500)': users.filter(user => (user.coinBalance || 0) > 200 && (user.coinBalance || 0) <= 500).length,
+      'Very High (500+)': users.filter(user => (user.coinBalance || 0) > 500).length
+    };
+
+    // Homeowner vs Non-homeowner breakdown
+    const homeownerStats = {
+      homeowner: {
+        count: users.filter(user => user.homeownerStatus === 'homeowner').length,
+        totalCoins: users.filter(user => user.homeownerStatus === 'homeowner').reduce((sum, user) => sum + (user.coinBalance || 0), 0)
+      },
+      nonHomeowner: {
+        count: users.filter(user => user.homeownerStatus === 'non-homeowner').length,
+        totalCoins: users.filter(user => user.homeownerStatus === 'non-homeowner').reduce((sum, user) => sum + (user.coinBalance || 0), 0)
+      }
+    };
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalUsers,
+          totalCoinsInSystem,
+          averageCoinsPerUser,
+          usersWithCoins,
+          usersWithoutCoins
+        },
+        topUsers,
+        coinDistribution,
+        homeownerStats,
+        allUsers: users
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting coin balance statistics:', error);
+    res.status(500).json({ error: 'Failed to get coin balance statistics' });
+  }
+};
