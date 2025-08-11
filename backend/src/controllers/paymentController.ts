@@ -44,6 +44,9 @@ export const getReservationPaymentDetails = async (req: AuthenticatedRequest, re
     const duration = reservation.duration || 1;
     const paymentCalculation = await calculatePlayerPayments(reservation.players, duration);
     
+    // Calculate total of all individual player payments
+    const totalCourtFee = paymentCalculation.playerPayments.reduce((sum, payment) => sum + payment.totalAmount, 0);
+    
     // Check if current user has already paid
     const existingPayment = await PaymentLog.findOne({
       userId,
@@ -63,6 +66,7 @@ export const getReservationPaymentDetails = async (req: AuthenticatedRequest, re
         },
         paymentCalculation,
         userPayment: paymentCalculation.playerPayments.find(p => p.playerId === userId.toString()),
+        totalCourtFee, // Total of all individual player payments
         hasPaid: !!existingPayment,
         existingPayment
       },
@@ -185,16 +189,23 @@ export const createPaymentLog = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    // Verify reservation exists and belongs to user
-    const reservation = await CourtReservation.findOne({
-      _id: reservationId,
-      userId
-    });
+    // Verify reservation exists and user is a player in the reservation
+    const reservation = await CourtReservation.findById(reservationId);
 
     if (!reservation) {
       res.status(404).json({
         success: false,
-        message: 'Reservation not found or does not belong to user',
+        message: 'Reservation not found',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if user is in the reservation players
+    if (!reservation.players.includes(userId.toString())) {
+      res.status(403).json({
+        success: false,
+        message: 'User not included in this reservation',
         timestamp: new Date().toISOString()
       } as ApiResponse);
       return;
@@ -228,9 +239,10 @@ export const createPaymentLog = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    // Calculate payment details based on player type and reservation
+    // Calculate payment details for all players in the reservation
     const duration = reservation.duration || 1;
-    const paymentCalculation = await calculatePlayerPayments([userId.toString()], duration);
+    const paymentCalculation = await calculatePlayerPayments(reservation.players, duration);
+    const totalCourtFee = paymentCalculation.playerPayments.reduce((sum, payment) => sum + payment.totalAmount, 0);
     const userPayment = paymentCalculation.playerPayments.find(p => p.playerId === userId.toString());
     
     if (!userPayment) {
@@ -242,25 +254,25 @@ export const createPaymentLog = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    // Validate that the provided amount matches the calculated amount
-    if (Math.abs(Number(amount) - userPayment.totalAmount) > 0.01) {
+    // Validate that the provided amount matches the total court fee
+    if (Math.abs(Number(amount) - totalCourtFee) > 0.01) {
       res.status(400).json({
         success: false,
-        message: `Amount mismatch. Expected: ${userPayment.totalAmount}, Provided: ${amount}`,
+        message: `Amount mismatch. Expected total court fee: ${totalCourtFee}, Provided: ${amount}`,
         timestamp: new Date().toISOString()
       } as ApiResponse);
       return;
     }
 
-    // Create payment log entry
+    // Create payment log entry for the total court fee
     const paymentLog = new PaymentLog({
       userId,
       reservationId,
       reservationDate: reservation.date,
-      amount: userPayment.totalAmount,
+      amount: totalCourtFee,
       notes: notes || '',
-      homeownerStatus: userPayment.homeownerStatus,
-      ratePerHour: userPayment.ratePerHour,
+      homeownerStatus: userPayment.homeownerStatus, // Still track the payer's homeowner status
+      ratePerHour: userPayment.ratePerHour, // Use the payer's rate for reference
       status: 'pending'
     });
 
