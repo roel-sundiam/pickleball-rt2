@@ -168,6 +168,12 @@ export const calculateReservationPayments = async (req: AuthenticatedRequest, re
   }
 };
 
+// Helper function to check if a date is a weekend (Friday, Saturday, Sunday)
+function isWeekendDay(date: Date): boolean {
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  return day === 0 || day === 5 || day === 6; // Sunday, Friday, Saturday
+}
+
 // Create a new court reservation
 export const createReservation = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -192,6 +198,16 @@ export const createReservation = async (req: AuthenticatedRequest, res: Response
       res.status(400).json({
         success: false,
         message: 'Cannot make reservations for past dates',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if date is a weekend (Friday, Saturday, Sunday) - Open Court Days
+    if (isWeekendDay(reservationDate)) {
+      res.status(400).json({
+        success: false,
+        message: 'Reservations are not needed for weekends (Friday, Saturday, Sunday) as these are Open Court Days. Players can come anytime but still need to pay court usage fees.',
         timestamp: new Date().toISOString()
       } as ApiResponse);
       return;

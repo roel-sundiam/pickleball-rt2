@@ -808,3 +808,247 @@ export const getCourtReceiptsReport = async (req: AuthenticatedRequest, res: Res
     } as ApiResponse);
   }
 };
+
+// Helper function to check if a date is a weekend (Friday, Saturday, Sunday)
+function isWeekendDay(date: Date): boolean {
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  return day === 0 || day === 5 || day === 6; // Sunday, Friday, Saturday
+}
+
+// Create weekend payment log entry
+export const createWeekendPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    const { 
+      date,
+      timeSlot,
+      hoursPlayed,
+      playerNames = [],
+      notes = ''
+    } = req.body;
+
+    // Validate required fields
+    if (!date || !timeSlot || !hoursPlayed) {
+      res.status(400).json({
+        success: false,
+        message: 'Date, time slot, and hours played are required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Parse and validate date
+    const paymentDate = new Date(date);
+    if (isNaN(paymentDate.getTime())) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid date format',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate that it's actually a weekend day
+    if (!isWeekendDay(paymentDate)) {
+      res.status(400).json({
+        success: false,
+        message: 'Weekend payments are only allowed for Friday, Saturday, and Sunday',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Get user info for payment calculation
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Check for existing payment on same date/time
+    const existingPayment = await PaymentLog.findOne({
+      userId,
+      reservationDate: paymentDate,
+      timeSlot,
+      playType: 'weekend'
+    });
+
+    if (existingPayment) {
+      res.status(409).json({
+        success: false,
+        message: 'Payment already logged for this date and time slot',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Calculate payment amount
+    const ratePerHour = user.homeownerStatus === 'homeowner' ? 25 : 50;
+    const totalAmount = ratePerHour * hoursPlayed;
+
+    // Create payment log entry
+    const paymentLog = new PaymentLog({
+      userId,
+      reservationDate: paymentDate,
+      amount: totalAmount,
+      status: 'pending',
+      notes,
+      homeownerStatus: user.homeownerStatus,
+      ratePerHour,
+      hoursPlayed,
+      playType: 'weekend',
+      timeSlot,
+      playerNames: playerNames.filter(Boolean) // Remove empty strings
+    });
+
+    await paymentLog.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Weekend payment logged successfully',
+      data: paymentLog,
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Create weekend payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create weekend payment',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+  }
+};
+
+// Get weekend payment history for current user
+export const getUserWeekendPayments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    const { page = 1, limit = 20, status } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter: any = {
+      userId,
+      playType: 'weekend'
+    };
+
+    if (status && typeof status === 'string') {
+      filter.status = status;
+    }
+
+    const [payments, total] = await Promise.all([
+      PaymentLog.find(filter)
+        .sort({ reservationDate: -1, timeSlot: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      PaymentLog.countDocuments(filter)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Weekend payment history retrieved successfully',
+      data: {
+        payments,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        }
+      },
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Get weekend payment history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve weekend payment history',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+  }
+};
+
+// Check if user has pending weekend payments for a specific date
+export const checkWeekendPaymentStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    const { date } = req.params;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    const paymentDate = new Date(date);
+    if (isNaN(paymentDate.getTime())) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid date format',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    const payments = await PaymentLog.find({
+      userId,
+      reservationDate: paymentDate,
+      playType: 'weekend'
+    }).sort({ timeSlot: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Weekend payment status retrieved successfully',
+      data: {
+        date,
+        payments,
+        hasPayments: payments.length > 0,
+        pendingCount: payments.filter(p => p.status === 'pending').length,
+        paidCount: payments.filter(p => p.status === 'paid').length
+      },
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Check weekend payment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check weekend payment status',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+  }
+};
