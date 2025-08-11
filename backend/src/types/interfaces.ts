@@ -220,7 +220,16 @@ export type TimeSlot = typeof TIME_SLOTS[number];
 
 // Configuration constants
 export const COIN_COSTS = {
+  // Legacy page visit cost (for backward compatibility)
   PAGE_VISIT: 1,
+  
+  // Tiered page visit costs
+  PAGE_VISIT_FREE: 0,
+  PAGE_VISIT_LOW: 1,
+  PAGE_VISIT_MEDIUM: 2,
+  PAGE_VISIT_HIGH: 3,
+  
+  // Other feature costs
   COURT_RESERVATION: 10,
   PREMIUM_FEATURE: 5
 } as const;

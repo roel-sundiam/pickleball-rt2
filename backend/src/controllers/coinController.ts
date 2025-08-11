@@ -106,15 +106,20 @@ export const submitPurchaseRequest = async (req: AuthenticatedRequest, res: Resp
     console.log('🔍 COIN DEBUG - req.body:', req.body);
     
     const userId = req.user?._id;
-    const { coinAmount, gcashReference, buyerName, phoneNumber, totalCost } = req.body;
+    const { coinAmount, paymentMethod, referenceNumber, buyerName, phoneNumber, totalCost } = req.body;
 
     if (!userId) {
       console.log('❌ COIN DEBUG - No userId found in req.user');
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    if (!coinAmount || !buyerName || !phoneNumber || !totalCost) {
-      return res.status(400).json({ error: 'Coin amount, buyer name, phone number, and total cost are required' });
+    if (!coinAmount || !paymentMethod || !buyerName || !phoneNumber || !totalCost) {
+      return res.status(400).json({ error: 'Coin amount, payment method, buyer name, phone number, and total cost are required' });
+    }
+
+    // Validate payment method
+    if (paymentMethod !== 'gcash' && paymentMethod !== 'bank') {
+      return res.status(400).json({ error: 'Payment method must be either "gcash" or "bank"' });
     }
 
     const user = await User.findById(userId);
@@ -134,7 +139,7 @@ export const submitPurchaseRequest = async (req: AuthenticatedRequest, res: Resp
       amount: coinAmount,
       type: 'requested',
       status: 'pending',
-      description: `GCash Purchase: ${coinAmount} coins for ₱${totalCost} | Ref: ${gcashReference || 'Not provided'} | Buyer: ${buyerName} | Phone: ${phoneNumber}`,
+      description: `${paymentMethod.toUpperCase()} Purchase: ${coinAmount} coins for ₱${totalCost} | Method: ${paymentMethod} | Ref: ${referenceNumber || 'Not provided'} | Buyer: ${buyerName} | Phone: ${phoneNumber}`,
       referenceId: undefined // Let it use the default null value since we're using description for reference info
     });
 

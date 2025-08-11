@@ -11,7 +11,7 @@ export const trackPageVisit = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { pageName, url, sessionId, userAgent } = req.body;
+    const { pageName, url, sessionId, userAgent, coinCost } = req.body;
     const userId = req.user?._id;
 
     // Enhanced validation
@@ -52,11 +52,14 @@ export const trackPageVisit = async (
 
     console.log('✅ User found:', { username: user.username, role: user.role, coinBalance: user.coinBalance });
 
+    // Determine the coin cost to use (from request or fallback to default)
+    const actualCoinCost = coinCost ?? COIN_COSTS.PAGE_VISIT;
+    
     // Check if user has sufficient coins (superadmins bypass this check)
-    if (user.role !== 'superadmin' && user.coinBalance < COIN_COSTS.PAGE_VISIT) {
+    if (user.role !== 'superadmin' && user.coinBalance < actualCoinCost) {
       res.status(402).json({
         success: false,
-        message: `Insufficient coins for page visit. Required: ${COIN_COSTS.PAGE_VISIT}, Available: ${user.coinBalance}`,
+        message: `Insufficient coins for page visit. Required: ${actualCoinCost}, Available: ${user.coinBalance}`,
         timestamp: new Date().toISOString()
       } as ApiResponse);
       return;
@@ -71,7 +74,7 @@ export const trackPageVisit = async (
         sessionId: requiredSessionId,
         userAgent: userAgent || req.headers['user-agent'] || 'unknown',
         ipAddress: req.ip || req.connection?.remoteAddress || 'unknown',
-        coinsConsumed: user.role === 'superadmin' ? 0 : COIN_COSTS.PAGE_VISIT,
+        coinsConsumed: user.role === 'superadmin' ? 0 : actualCoinCost,
         timestamp: new Date()
       });
 
@@ -82,7 +85,7 @@ export const trackPageVisit = async (
       // Deduct coins from user balance (skip for superadmins)
       if (user.role !== 'superadmin') {
         console.log('💰 Deducting coins from user balance...');
-        user.coinBalance -= COIN_COSTS.PAGE_VISIT;
+        user.coinBalance -= actualCoinCost;
         await user.save();
         console.log('✅ User coin balance updated:', user.coinBalance);
 
@@ -90,8 +93,8 @@ export const trackPageVisit = async (
         const coinTransaction = new CoinTransaction({
           userId,
           type: 'spent',
-          amount: COIN_COSTS.PAGE_VISIT,
-          description: `Page visit: ${requiredPageName}`,
+          amount: actualCoinCost,
+          description: `Page visit: ${requiredPageName} (${actualCoinCost} coins)`,
           referenceId: pageVisit._id,
           status: 'approved'
         });
