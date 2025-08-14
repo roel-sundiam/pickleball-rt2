@@ -673,6 +673,7 @@ export const cancelReservation = async (req: AuthenticatedRequest, res: Response
   try {
     const reservationId = req.params.id;
     const userId = req.user?._id;
+    const { cancellationReason } = req.body;
 
     // Find reservation
     const reservation = await CourtReservation.findById(reservationId);
@@ -714,9 +715,33 @@ export const cancelReservation = async (req: AuthenticatedRequest, res: Response
       return;
     }
 
+    // Validate cancellation reason for past date reservations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const reservationDate = new Date(reservation.date);
+    reservationDate.setHours(0, 0, 0, 0);
+    
+    const isPastDate = reservationDate < today;
+    
+    if (isPastDate && !cancellationReason) {
+      res.status(400).json({
+        success: false,
+        message: 'Cancellation reason is required for past date reservations',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
     // Cancel reservation
     reservation.status = 'cancelled';
-    await reservation.save();
+    reservation.paymentStatus = 'paid'; // Mark as paid since no payment is needed for cancelled reservations
+    if (cancellationReason) {
+      reservation.cancellationReason = cancellationReason;
+    }
+    reservation.cancelledAt = new Date();
+    
+    // Save without validation to allow cancellation of past date reservations
+    await reservation.save({ validateBeforeSave: false });
 
     // Refund coins to user if reservation was paid with coins
     const user = await User.findById(reservation.userId);
@@ -751,9 +776,13 @@ export const cancelReservation = async (req: AuthenticatedRequest, res: Response
 
     await reservation.populate('userId', 'fullName username email');
 
+    const cancellationMessage = cancellationReason 
+      ? `Reservation cancelled successfully. Reason: ${cancellationReason}. Coins have been refunded.`
+      : 'Reservation cancelled successfully. Coins have been refunded.';
+
     res.status(200).json({
       success: true,
-      message: 'Reservation cancelled successfully. Coins have been refunded.',
+      message: cancellationMessage,
       data: reservation,
       timestamp: new Date().toISOString()
     } as ApiResponse);

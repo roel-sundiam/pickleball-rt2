@@ -65,6 +65,8 @@ export interface CourtReservation {
   updatedAt: Date;
   notes?: string;
   duration?: number; // Duration in hours
+  cancellationReason?: string; // Reason for cancellation
+  cancelledAt?: Date; // When the reservation was cancelled
 }
 
 export interface ReservationRequest {

@@ -16,7 +16,12 @@ const courtReservationSchema = new Schema<CourtReservationDocument>({
     type: Date,
     required: [true, 'Date is required'],
     validate: {
-      validator: function(value: Date) {
+      validator: function(this: any, value: Date) {
+        // Only validate past dates for new reservations, not for updates (like cancellations)
+        if (!this.isNew) {
+          return true; // Allow updates to existing reservations regardless of date
+        }
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return value >= today;
@@ -82,6 +87,14 @@ const courtReservationSchema = new Schema<CourtReservationDocument>({
     type: String,
     maxlength: [500, 'Notes cannot exceed 500 characters'],
     trim: true
+  },
+  cancellationReason: {
+    type: String,
+    maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
+    trim: true
+  },
+  cancelledAt: {
+    type: Date
   }
 }, {
   timestamps: true,
