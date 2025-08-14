@@ -50,5 +50,5 @@ pickleball-rt2/
 ## MongoDB Connection
 
 ```
-mongodb+srv://admin:Wowbot0411!1@mydb.zxr9i5k.mongodb.net/PickleBallRT2@?retryWrites=true&w=majority&appName=MyDB
+
 ```
