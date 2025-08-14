@@ -1052,3 +1052,117 @@ export const checkWeekendPaymentStatus = async (req: AuthenticatedRequest, res: 
     } as ApiResponse);
   }
 };
+
+// Create additional payment log entry
+export const createAdditionalPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { amount, paymentCategory, description, date } = req.body;
+    const userId = req.user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if user exists and is approved
+    const user = await User.findById(userId);
+    if (!user || !user.isApproved) {
+      res.status(403).json({
+        success: false,
+        message: 'User not found or not approved',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate required fields
+    if (!amount || !paymentCategory || !description || !date) {
+      res.status(400).json({
+        success: false,
+        message: 'Amount, payment category, description, and date are required',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate amount
+    if (typeof amount !== 'number' || amount <= 0 || amount > 10000) {
+      res.status(400).json({
+        success: false,
+        message: 'Amount must be a number between 1 and 10,000',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate payment category
+    const validCategories = ['court-usage', 'equipment', 'membership', 'penalty', 'maintenance', 'event', 'correction', 'other'];
+    if (!validCategories.includes(paymentCategory)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid payment category',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate description length
+    if (typeof description !== 'string' || description.length < 10 || description.length > 500) {
+      res.status(400).json({
+        success: false,
+        message: 'Description must be between 10 and 500 characters',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Parse and validate date
+    const paymentDate = new Date(date);
+    if (isNaN(paymentDate.getTime())) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid date format',
+        timestamp: new Date().toISOString()
+      } as ApiResponse);
+      return;
+    }
+
+    // Create additional payment log entry
+    const paymentLog = new PaymentLog({
+      userId,
+      reservationDate: paymentDate,
+      amount,
+      status: 'pending',
+      notes: description,
+      homeownerStatus: user.homeownerStatus,
+      ratePerHour: 0, // Not applicable for additional payments
+      playType: 'additional',
+      paymentCategory
+    });
+
+    await paymentLog.save();
+
+    // Populate user information for response
+    await paymentLog.populate('userId', 'fullName username email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Additional payment logged successfully',
+      data: paymentLog,
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Create additional payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create additional payment',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    } as ApiResponse);
+  }
+};

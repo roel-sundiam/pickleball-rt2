@@ -12,7 +12,8 @@ import {
   getCourtReceiptsReport,
   createWeekendPayment,
   getUserWeekendPayments,
-  checkWeekendPaymentStatus
+  checkWeekendPaymentStatus,
+  createAdditionalPayment
 } from '../controllers/paymentController';
 import { authenticate, requireApproval, requireSuperAdmin } from '../middleware/auth';
 
@@ -36,6 +37,9 @@ router.get('/unsettled', authenticate, requireApproval, checkUnsettledPayments);
 router.post('/weekend', authenticate, requireApproval, createWeekendPayment);
 router.get('/weekend/history', authenticate, requireApproval, getUserWeekendPayments);
 router.get('/weekend/status/:date', authenticate, requireApproval, checkWeekendPaymentStatus);
+
+// Additional payment routes
+router.post('/additional', authenticate, requireApproval, createAdditionalPayment);
 
 // Admin routes - require super admin role
 // Note: Specific routes must come before parameterized routes

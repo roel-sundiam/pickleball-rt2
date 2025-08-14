@@ -100,13 +100,19 @@ export interface PaymentRequest {
 export interface PaymentLog {
   _id?: string;
   userId: string;
-  reservationId: string;
+  reservationId?: string; // Optional for additional payments
   reservationDate: Date;
   amount: number;
   status: 'pending' | 'paid' | 'rejected';
   notes?: string;
   homeownerStatus: 'homeowner' | 'non-homeowner';
   ratePerHour: number;
+  // Additional fields for different payment types
+  playType?: 'reservation' | 'weekend' | 'additional';
+  paymentCategory?: 'court-usage' | 'equipment' | 'membership' | 'penalty' | 'maintenance' | 'event' | 'correction' | 'other';
+  timeSlot?: string; // For weekend payments
+  hoursPlayed?: number; // For weekend payments
+  playerNames?: string[]; // For weekend payments
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,6 +121,13 @@ export interface PaymentLogRequest {
   reservationId: string;
   amount: number;
   notes?: string;
+}
+
+export interface AdditionalPaymentRequest {
+  amount: number;
+  paymentCategory: 'court-usage' | 'equipment' | 'membership' | 'penalty' | 'maintenance' | 'event' | 'correction' | 'other';
+  description: string;
+  date: string;
 }
 
 export interface PlayerPaymentCalculation {

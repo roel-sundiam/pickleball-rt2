@@ -9,8 +9,9 @@ export interface PaymentLogDocument extends Document {
   notes?: string;
   homeownerStatus: 'homeowner' | 'non-homeowner';
   ratePerHour: number;
-  hoursPlayed: number; // Add hours played for weekend payments
-  playType: 'reservation' | 'weekend'; // Distinguish payment types
+  hoursPlayed?: number; // Add hours played for weekend payments
+  playType: 'reservation' | 'weekend' | 'additional'; // Distinguish payment types
+  paymentCategory?: 'equipment' | 'membership' | 'penalty' | 'maintenance' | 'event' | 'correction' | 'other'; // For additional payments
   timeSlot?: string; // For weekend payments, store time slot
   playerNames?: string[]; // Store other player names for weekend sessions
   createdAt: Date;
@@ -59,15 +60,30 @@ const paymentLogSchema = new Schema<PaymentLogDocument>({
   },
   hoursPlayed: {
     type: Number,
-    required: [true, 'Hours played is required'],
+    required: false, // Not required for additional payments
     min: [0.5, 'Minimum 0.5 hours'],
     max: [8, 'Maximum 8 hours per session']
   },
   playType: {
     type: String,
-    enum: ['reservation', 'weekend'],
+    enum: ['reservation', 'weekend', 'additional'],
     required: [true, 'Play type is required'],
     default: 'reservation'
+  },
+  paymentCategory: {
+    type: String,
+    enum: ['court-usage', 'equipment', 'membership', 'penalty', 'maintenance', 'event', 'correction', 'other'],
+    required: false, // Only required for additional payments
+    validate: {
+      validator: function(this: PaymentLogDocument, v: string) {
+        // Payment category required for additional payments
+        if (this.playType === 'additional') {
+          return !!v;
+        }
+        return true;
+      },
+      message: 'Payment category required for additional payments'
+    }
   },
   timeSlot: {
     type: String,
