@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme 2 - Pickleball Court Reservation System</title>
+    <style>
+        /* ===== THEME 2 — Colors and Buttons Only ===== */
+        
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Backgrounds */
+        body, .mat-app-background {
+            background-color: #f9f9f9; /* Light background for easy reading */
+            color: #222; /* Default text color for high contrast */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.5;
+        }
+
+        /* Toolbar */
+        .mat-toolbar {
+            background-color: #ffffff; /* White toolbar */
+            color: #1a1a1a; /* Dark text for contrast */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 64px;
+        }
+
+        .toolbar-title {
+            font-size: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-logo {
+            width: 40px;
+            height: 40px;
+            background-color: #ff9800;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: #111;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* Cards */
+        .mat-card {
+            background-color: #ffffff;
+            color: #222;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        /* Headings inside cards */
+        .mat-card-title {
+            color: #111;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mat-card-content {
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .card-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        /* Form Fields */
+        .form-section {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .mat-form-field {
+            color: #222;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .mat-form-field-label {
+            color: #555 !important;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .mat-input-element {
+            color: #222 !important;
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .mat-input-element:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Buttons */
+        .mat-raised-button, .mat-button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            margin: 4px;
+        }
+
+        .mat-raised-button.mat-primary {
+            background-color: #0078d4; /* Blue primary button */
+            color: #fff;
+        }
+
+        .mat-raised-button.mat-primary:hover {
+            background-color: #005ea6;
+            transform: translateY(-1px);
+        }
+
+        .mat-raised-button.mat-accent {
+            background-color: #ff9800; /* Accent orange */
+            color: #fff;
+        }
+
+        .mat-raised-button.mat-accent:hover {
+            background-color: #e68a00;
+            transform: translateY(-1px);
+        }
+
+        .mat-raised-button.mat-warn {
+            background-color: #d32f2f;
+            color: #fff;
+        }
+
+        .mat-raised-button.mat-warn:hover {
+            background-color: #b71c1c;
+            transform: translateY(-1px);
+        }
+
+        /* Disabled Buttons */
+        .mat-button-disabled {
+            background-color: #ccc !important;
+            color: #666 !important;
+            cursor: not-allowed !important;
+        }
+
+        .mat-button-disabled:hover {
+            transform: none !important;
+        }
+
+        /* Text Buttons */
+        .mat-button {
+            color: #0078d4;
+            background-color: transparent;
+        }
+
+        .mat-button:hover {
+            background-color: rgba(0, 120, 212, 0.08);
+        }
+
+        .buttons-demo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-approved {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status-member {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .toolbar-title {
+                font-size: 18px;
+            }
+            
+            .toolbar-actions {
+                gap: 8px;
+            }
+            
+            .main-content {
+                padding: 16px;
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons-demo {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toolbar -->
+    <header class="mat-toolbar">
+        <div class="toolbar-title">
+            <div class="toolbar-logo">🏓</div>
+            <span>Rich Town 2 Pickleball Club</span>
+        </div>
+        <div class="toolbar-actions">
+            <div class="user-info">
+                <span>👤</span>
+                <span>Welcome Roel Sundiam</span>
+            </div>
+            <div class="user-info">
+                <span>🍽️</span>
+                <span>Menu 559</span>
+            </div>
+            <div class="user-info">
+                <span>👤</span>
+                <span>Profile</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">Theme 2 Demo - Court Reservation System</h1>
+            <p class="page-subtitle">High contrast design optimized for accessibility and easy reading</p>
+            <div style="margin-top: 12px;">
+                <span class="status-indicator status-member">🏅 Member</span>
+                <span class="status-indicator status-approved">✅ Approved</span>
+            </div>
+        </div>
+
+        <!-- Feature Cards -->
+        <div class="cards-grid">
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">📍</span>
+                    Book Court
+                </h2>
+                <div class="mat-card-content">
+                    Book courts from 5:00 AM to 10:00 PM for each time slot. Check availability and weather conditions.
+                </div>
+                <button class="mat-raised-button mat-primary">Book Now</button>
+            </div>
+
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">📅</span>
+                    Schedule
+                </h2>
+                <div class="mat-card-content">
+                    View daily schedule with weather forecast for each time slot. Plan your games ahead.
+                </div>
+                <button class="mat-raised-button mat-primary">View Schedule</button>
+            </div>
+
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">📋</span>
+                    My Bookings
+                </h2>
+                <div class="mat-card-content">
+                    View and manage your court bookings. Cancel or modify reservations as needed.
+                </div>
+                <button class="mat-raised-button mat-primary">Manage Bookings</button>
+            </div>
+
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">💰</span>
+                    Purchase Coins
+                </h2>
+                <div class="mat-card-content">
+                    Current: 559 coins. Top up your coin balance via GCash or Bank Transfer for court reservations.
+                </div>
+                <button class="mat-raised-button mat-accent">Buy Coins</button>
+            </div>
+        </div>
+
+        <!-- Sample Form -->
+        <div class="form-section">
+            <h2 class="mat-card-title">
+                <span class="card-icon">📝</span>
+                Sample Reservation Form
+            </h2>
+            <form>
+                <div class="form-row">
+                    <div class="mat-form-field">
+                        <label class="mat-form-field-label">Player Name</label>
+                        <input type="text" class="mat-input-element" placeholder="Enter your name" value="Roel Sundiam">
+                    </div>
+                    <div class="mat-form-field">
+                        <label class="mat-form-field-label">Contact Number</label>
+                        <input type="tel" class="mat-input-element" placeholder="09XX XXX XXXX">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="mat-form-field">
+                        <label class="mat-form-field-label">Reservation Date</label>
+                        <input type="date" class="mat-input-element">
+                    </div>
+                    <div class="mat-form-field">
+                        <label class="mat-form-field-label">Time Slot</label>
+                        <input type="time" class="mat-input-element">
+                    </div>
+                </div>
+
+                <div class="mat-form-field">
+                    <label class="mat-form-field-label">Special Requests</label>
+                    <input type="text" class="mat-input-element" placeholder="Any special requirements or notes">
+                </div>
+
+                <div class="buttons-demo">
+                    <button type="submit" class="mat-raised-button mat-primary">Submit Reservation</button>
+                    <button type="button" class="mat-raised-button mat-accent">Save Draft</button>
+                    <button type="button" class="mat-raised-button mat-warn">Cancel</button>
+                    <button type="button" class="mat-button">Reset Form</button>
+                    <button type="button" class="mat-raised-button mat-button-disabled" disabled>Disabled Button</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Button Variants Demo -->
+        <div class="mat-card">
+            <h2 class="mat-card-title">
+                <span class="card-icon">🎨</span>
+                Button Variants Demo
+            </h2>
+            <div class="mat-card-content">
+                Showcasing all button styles with high contrast colors suitable for elderly users:
+            </div>
+
+            <h3 style="margin: 20px 0 12px 0; color: #333;">Raised Buttons</h3>
+            <div class="buttons-demo">
+                <button class="mat-raised-button mat-primary">Primary Button</button>
+                <button class="mat-raised-button mat-accent">Accent Button</button>
+                <button class="mat-raised-button mat-warn">Warning Button</button>
+                <button class="mat-raised-button mat-button-disabled" disabled>Disabled Button</button>
+            </div>
+
+            <h3 style="margin: 20px 0 12px 0; color: #333;">Text Buttons</h3>
+            <div class="buttons-demo">
+                <button class="mat-button">Text Button</button>
+                <button class="mat-button">Another Text Button</button>
+                <button class="mat-button">Link Style Button</button>
+            </div>
+
+            <h3 style="margin: 20px 0 12px 0; color: #333;">Action Buttons</h3>
+            <div class="buttons-demo">
+                <button class="mat-raised-button mat-primary">Book Court</button>
+                <button class="mat-raised-button mat-accent">Purchase Coins</button>
+                <button class="mat-raised-button mat-warn">Cancel Booking</button>
+                <button class="mat-button">View Details</button>
+            </div>
+        </div>
+
+        <!-- Additional Demo Cards -->
+        <div class="cards-grid">
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">⚡</span>
+                    System Status
+                </h2>
+                <div class="mat-card-content">
+                    All systems operational. Weather data updated every hour for accurate forecasting.
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <span class="status-indicator" style="background-color: #e8f5e8; color: #2e7d32;">✅ Online</span>
+                    <span class="status-indicator" style="background-color: #e3f2fd; color: #1976d2;">🌦️ Weather API</span>
+                </div>
+            </div>
+
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">📊</span>
+                    Usage Statistics
+                </h2>
+                <div class="mat-card-content">
+                    Track your court usage, coin balance, and reservation history for better planning.
+                </div>
+                <button class="mat-button">View Analytics</button>
+            </div>
+
+            <div class="mat-card">
+                <h2 class="mat-card-title">
+                    <span class="card-icon">🏆</span>
+                    Club Benefits
+                </h2>
+                <div class="mat-card-content">
+                    Enjoy exclusive member benefits including priority booking and discounted rates.
+                </div>
+                <div class="buttons-demo">
+                    <button class="mat-raised-button mat-accent">Learn More</button>
+                    <button class="mat-button">Member Guide</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
