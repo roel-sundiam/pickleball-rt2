@@ -127,7 +127,10 @@ paymentLogSchema.index({ status: 1 });
 // Create partial unique index for reservation-based payments only
 paymentLogSchema.index({ userId: 1, reservationId: 1 }, { 
   unique: true, 
-  partialFilterExpression: { reservationId: { $exists: true } } 
+  partialFilterExpression: { 
+    reservationId: { $exists: true },
+    playType: 'reservation'
+  } 
 }); // Prevent duplicate payments per user per reservation
 
 // Add compound index for weekend payment tracking (userId + date + type)
@@ -146,5 +149,19 @@ paymentLogSchema.index({
     timeSlot: { $exists: true }
   } 
 });
+
+// Add unique index for additional payments to prevent duplicates within a short time period
+paymentLogSchema.index({ 
+  userId: 1, 
+  reservationDate: 1, 
+  paymentCategory: 1,
+  amount: 1,
+  playType: 1 
+}, { 
+  unique: true, 
+  partialFilterExpression: { 
+    playType: 'additional'
+  } 
+}); // Prevent duplicate additional payments on same date with same category and amount
 
 export default mongoose.model<PaymentLogDocument>('PaymentLog', paymentLogSchema);
